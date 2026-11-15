@@ -20,7 +20,6 @@ audited later, the underlying event history is still intact.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Set, Tuple
 
 from .models import Alert
 from .parsers import check_input_file, iter_text_lines
@@ -39,22 +38,21 @@ class AllowList:
     meant to cover that account regardless of which IP it logs in from.
     """
 
-    ips: Set[str] = field(default_factory=set)
-    usernames: Set[str] = field(default_factory=set)
+    ips: set[str] = field(default_factory=set)
+    usernames: set[str] = field(default_factory=set)
 
     def __bool__(self) -> bool:
         return bool(self.ips or self.usernames)
 
     def is_allowed(self, alert: Alert) -> bool:
-        if alert.source_ip and alert.source_ip in self.ips:
-            return True
-        if alert.username and alert.username in self.usernames:
-            return True
-        return False
+        ip_allowed = alert.source_ip is not None and alert.source_ip in self.ips
+        user_allowed = alert.username is not None and alert.username in self.usernames
+        return ip_allowed or user_allowed
 
-    def filter_alerts(self, alerts: List[Alert]) -> Tuple[List[Alert], List[Alert]]:
+    def filter_alerts(self, alerts: list[Alert]) -> tuple[list[Alert], list[Alert]]:
         """Split alerts into (kept, suppressed)."""
-        kept, suppressed = [], []
+        kept: list[Alert] = []
+        suppressed: list[Alert] = []
         for a in alerts:
             (suppressed if self.is_allowed(a) else kept).append(a)
         return kept, suppressed
@@ -101,8 +99,8 @@ def load_allowlist_file(path: str) -> AllowList:
 
 
 def build_allowlist(
-    cli_ips: List[str] | None = None,
-    cli_users: List[str] | None = None,
+    cli_ips: list[str] | None = None,
+    cli_users: list[str] | None = None,
     file_path: str | None = None,
 ) -> AllowList:
     """Combine allow-list entries from --allow-ip/--allow-user flags and an

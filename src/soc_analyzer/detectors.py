@@ -11,8 +11,7 @@ engine. See docs/DETECTION_RULES.md for the reasoning behind each threshold.
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from datetime import timedelta
-from typing import Dict, List, Optional
+from datetime import datetime, timedelta
 from urllib.parse import unquote, urlsplit
 
 from .models import Alert, LogEvent, Severity
@@ -35,28 +34,39 @@ from .models import Alert, LogEvent, Severity
 # --------------------------------------------------------------------------
 
 SENSITIVE_FILE_SUFFIXES = [
-    ".env", ".git/config", ".aws/credentials", ".ssh/id_rsa",
-    "config.php", "wp-login.php",
+    ".env",
+    ".git/config",
+    ".aws/credentials",
+    ".ssh/id_rsa",
+    "config.php",
+    "wp-login.php",
 ]
 
 SENSITIVE_PATH_PREFIXES = [
-    "/admin", "/administrator", "/wp-admin", "/phpmyadmin",
+    "/admin",
+    "/administrator",
+    "/wp-admin",
+    "/phpmyadmin",
 ]
 
 INJECTION_PATTERNS = [
-    "union select", "select * from", "<script", "' or '1'='1", "' or 1=1",
+    "union select",
+    "select * from",
+    "<script",
+    "' or '1'='1",
+    "' or 1=1",
     "../",
 ]
 
 
-def _match_sensitive_file(path: str) -> Optional[str]:
+def _match_sensitive_file(path: str) -> str | None:
     for suffix in SENSITIVE_FILE_SUFFIXES:
         if path == "/" + suffix or path.endswith("/" + suffix):
             return suffix
     return None
 
 
-def _match_path_prefix(path: str) -> Optional[str]:
+def _match_path_prefix(path: str) -> str | None:
     for prefix in SENSITIVE_PATH_PREFIXES:
         if path == prefix or path.startswith(prefix + "/"):
             return prefix
@@ -64,16 +74,17 @@ def _match_path_prefix(path: str) -> Optional[str]:
 
 
 def detect_brute_force(
-    events: List[LogEvent], threshold: int = 5, window_minutes: int = 5
-) -> List[Alert]:
+    events: list[LogEvent], threshold: int = 5, window_minutes: int = 5
+) -> list[Alert]:
     """Flag an IP that racks up >= threshold failed logins inside a sliding window."""
     window = timedelta(minutes=window_minutes)
     failed = [e for e in events if e.event_type in ("failed_login", "invalid_user")]
-    by_ip: Dict[str, List[LogEvent]] = defaultdict(list)
+    by_ip: dict[str, list[LogEvent]] = defaultdict(list)
     for e in failed:
-        by_ip[e.source_ip].append(e)
+        if e.source_ip is not None:
+            by_ip[e.source_ip].append(e)
 
-    alerts: List[Alert] = []
+    alerts: list[Alert] = []
     for ip, evs in by_ip.items():
         evs.sort(key=lambda e: e.timestamp)
         start = 0
@@ -82,26 +93,28 @@ def detect_brute_force(
                 start += 1
             count = end - start + 1
             if count >= threshold:
-                usernames = sorted({e.username for e in evs[start:end + 1] if e.username})
-                alerts.append(Alert(
-                    alert_type="brute_force",
-                    severity=Severity.HIGH,
-                    description="Possible brute-force login attempt",
-                    timestamp=evs[end].timestamp,
-                    source_ip=ip,
-                    details={
-                        "failed_attempts": count,
-                        "window_minutes": window_minutes,
-                        "usernames_tried": usernames[:10],
-                    },
-                ))
+                usernames = sorted({e.username for e in evs[start : end + 1] if e.username})
+                alerts.append(
+                    Alert(
+                        alert_type="brute_force",
+                        severity=Severity.HIGH,
+                        description="Possible brute-force login attempt",
+                        timestamp=evs[end].timestamp,
+                        source_ip=ip,
+                        details={
+                            "failed_attempts": count,
+                            "window_minutes": window_minutes,
+                            "usernames_tried": usernames[:10],
+                        },
+                    )
+                )
                 break  # one alert per IP is enough; avoid duplicate spam
     return alerts
 
 
 def detect_compromised_credential(
-    events: List[LogEvent], window_minutes: int = 5, precede_threshold: int = 3
-) -> List[Alert]:
+    events: list[LogEvent], window_minutes: int = 5, precede_threshold: int = 3
+) -> list[Alert]:
     """Flag a successful login that immediately follows a burst of failures
     from the SAME IP — a strong signal the brute force eventually worked.
 
@@ -111,15 +124,18 @@ def detect_compromised_credential(
     failure to falsely reach the threshold.
     """
     window = timedelta(minutes=window_minutes)
-    by_ip: Dict[str, List[LogEvent]] = defaultdict(list)
+    by_ip: dict[str, list[LogEvent]] = defaultdict(list)
     for e in events:
-        if e.event_type in ("failed_login", "invalid_user", "accepted_login"):
+        if (
+            e.event_type in ("failed_login", "invalid_user", "accepted_login")
+            and e.source_ip is not None
+        ):
             by_ip[e.source_ip].append(e)
 
-    alerts: List[Alert] = []
+    alerts: list[Alert] = []
     for ip, evs in by_ip.items():
         evs.sort(key=lambda e: e.timestamp)
-        recent_failures: deque = deque()  # timestamps of failures not yet expired
+        recent_failures: deque[datetime] = deque()  # failures not yet expired
         for e in evs:
             if e.event_type in ("failed_login", "invalid_user"):
                 recent_failures.append(e.timestamp)
@@ -127,36 +143,39 @@ def detect_compromised_credential(
                 while recent_failures and e.timestamp - recent_failures[0] > window:
                     recent_failures.popleft()
                 if len(recent_failures) >= precede_threshold:
-                    alerts.append(Alert(
-                        alert_type="possible_compromised_credential",
-                        severity=Severity.CRITICAL,
-                        description=(
-                            "Successful login immediately followed a burst of "
-                            "failed attempts from the same IP"
-                        ),
-                        timestamp=e.timestamp,
-                        source_ip=ip,
-                        username=e.username,
-                        details={
-                            "preceding_failures": len(recent_failures),
-                            "window_minutes": window_minutes,
-                        },
-                    ))
+                    alerts.append(
+                        Alert(
+                            alert_type="possible_compromised_credential",
+                            severity=Severity.CRITICAL,
+                            description=(
+                                "Successful login immediately followed a burst of "
+                                "failed attempts from the same IP"
+                            ),
+                            timestamp=e.timestamp,
+                            source_ip=ip,
+                            username=e.username,
+                            details={
+                                "preceding_failures": len(recent_failures),
+                                "window_minutes": window_minutes,
+                            },
+                        )
+                    )
                 recent_failures.clear()  # a login (success) closes out this burst
     return alerts
 
 
 def detect_privilege_escalation(
-    events: List[LogEvent], threshold: int = 3, window_minutes: int = 5
-) -> List[Alert]:
+    events: list[LogEvent], threshold: int = 3, window_minutes: int = 5
+) -> list[Alert]:
     """Flag a user who racks up >= threshold failed sudo attempts inside a
     sliding window — mirrors detect_brute_force's windowing so a handful of
     unrelated failures spread over weeks doesn't falsely trigger this."""
     window = timedelta(minutes=window_minutes)
     fails = [e for e in events if e.event_type == "sudo_failure"]
-    by_user: Dict[str, List[LogEvent]] = defaultdict(list)
+    by_user: dict[str, list[LogEvent]] = defaultdict(list)
     for e in fails:
-        by_user[e.username].append(e)
+        if e.username is not None:
+            by_user[e.username].append(e)
 
     alerts = []
     for user, evs in by_user.items():
@@ -167,27 +186,30 @@ def detect_privilege_escalation(
                 start += 1
             count = end - start + 1
             if count >= threshold:
-                alerts.append(Alert(
-                    alert_type="privilege_escalation_attempt",
-                    severity=Severity.MEDIUM,
-                    description="Repeated failed sudo/privilege escalation attempts",
-                    timestamp=evs[end].timestamp,
-                    username=user,
-                    details={"failed_attempts": count, "window_minutes": window_minutes},
-                ))
+                alerts.append(
+                    Alert(
+                        alert_type="privilege_escalation_attempt",
+                        severity=Severity.MEDIUM,
+                        description="Repeated failed sudo/privilege escalation attempts",
+                        timestamp=evs[end].timestamp,
+                        username=user,
+                        details={"failed_attempts": count, "window_minutes": window_minutes},
+                    )
+                )
                 break
     return alerts
 
 
 def detect_web_scanning(
-    events: List[LogEvent], threshold: int = 10, window_minutes: int = 2
-) -> List[Alert]:
+    events: list[LogEvent], threshold: int = 10, window_minutes: int = 2
+) -> list[Alert]:
     """Flag an IP generating a burst of 404s — typical of directory/content scanning."""
     window = timedelta(minutes=window_minutes)
     not_found = [e for e in events if e.event_type == "http_request" and e.status_code == 404]
-    by_ip: Dict[str, List[LogEvent]] = defaultdict(list)
+    by_ip: dict[str, list[LogEvent]] = defaultdict(list)
     for e in not_found:
-        by_ip[e.source_ip].append(e)
+        if e.source_ip is not None:
+            by_ip[e.source_ip].append(e)
 
     alerts = []
     for ip, evs in by_ip.items():
@@ -198,19 +220,21 @@ def detect_web_scanning(
                 start += 1
             count = end - start + 1
             if count >= threshold:
-                alerts.append(Alert(
-                    alert_type="web_scanning",
-                    severity=Severity.MEDIUM,
-                    description="Burst of 404 responses suggests directory/content scanning",
-                    timestamp=evs[end].timestamp,
-                    source_ip=ip,
-                    details={"requests_404": count, "window_minutes": window_minutes},
-                ))
+                alerts.append(
+                    Alert(
+                        alert_type="web_scanning",
+                        severity=Severity.MEDIUM,
+                        description="Burst of 404 responses suggests directory/content scanning",
+                        timestamp=evs[end].timestamp,
+                        source_ip=ip,
+                        details={"requests_404": count, "window_minutes": window_minutes},
+                    )
+                )
                 break
     return alerts
 
 
-def detect_suspicious_paths(events: List[LogEvent]) -> List[Alert]:
+def detect_suspicious_paths(events: list[LogEvent]) -> list[Alert]:
     """Flag requests to known-sensitive paths or containing injection-style payloads.
 
     NOTE: this is pattern/signature matching against the request path, not a
@@ -238,23 +262,25 @@ def detect_suspicious_paths(events: List[LogEvent]) -> List[Alert]:
                     break
 
         if match:
-            alerts.append(Alert(
-                alert_type="suspicious_request",
-                severity=Severity.HIGH,
-                description=f"Request matched suspicious pattern: {match}",
-                timestamp=e.timestamp,
-                source_ip=e.source_ip,
-                details={"path": e.path, "method": e.method, "status": e.status_code},
-            ))
+            alerts.append(
+                Alert(
+                    alert_type="suspicious_request",
+                    severity=Severity.HIGH,
+                    description=f"Request matched suspicious pattern: {match}",
+                    timestamp=e.timestamp,
+                    source_ip=e.source_ip,
+                    details={"path": e.path, "method": e.method, "status": e.status_code},
+                )
+            )
     return alerts
 
 
 def detect_recon_to_intrusion(
-    events: List[LogEvent],
+    events: list[LogEvent],
     correlation_window_minutes: int = 60,
     scan_threshold: int = 10,
     scan_window: int = 2,
-) -> List[Alert]:
+) -> list[Alert]:
     """Flag an IP whose web recon (scanning or a suspicious request) is
     followed by SSH authentication activity from the SAME IP within a
     window — the signature of an actor who scanned first, then pivoted to
@@ -274,28 +300,31 @@ def detect_recon_to_intrusion(
     """
     window = timedelta(minutes=correlation_window_minutes)
 
-    recon_alerts = (
-        detect_web_scanning(events, scan_threshold, scan_window)
-        + detect_suspicious_paths(events)
-    )
-    first_recon_by_ip: Dict[str, Alert] = {}
+    recon_alerts = detect_web_scanning(
+        events, scan_threshold, scan_window
+    ) + detect_suspicious_paths(events)
+    first_recon_by_ip: dict[str, Alert] = {}
     for a in recon_alerts:
         if not a.source_ip:
             continue
-        if a.source_ip not in first_recon_by_ip or a.timestamp < first_recon_by_ip[a.source_ip].timestamp:
+        if (
+            a.source_ip not in first_recon_by_ip
+            or a.timestamp < first_recon_by_ip[a.source_ip].timestamp
+        ):
             first_recon_by_ip[a.source_ip] = a
 
     if not first_recon_by_ip:
         return []
 
     auth_events = [
-        e for e in events
+        e
+        for e in events
         if e.event_type in ("failed_login", "invalid_user", "accepted_login") and e.source_ip
     ]
     auth_events.sort(key=lambda e: e.timestamp)
 
-    alerts: List[Alert] = []
-    already_flagged: set = set()
+    alerts: list[Alert] = []
+    already_flagged: set[str] = set()
     for e in auth_events:
         ip = e.source_ip
         if ip not in first_recon_by_ip or ip in already_flagged:
@@ -304,31 +333,33 @@ def detect_recon_to_intrusion(
         delta = e.timestamp - recon_alert.timestamp
         if delta.total_seconds() < 0 or delta > window:
             continue  # auth activity before recon, or outside the window, isn't this pattern
-        alerts.append(Alert(
-            alert_type="recon_to_intrusion",
-            severity=Severity.CRITICAL,
-            description=(
-                "Web reconnaissance from this IP was followed by SSH "
-                "authentication activity within the correlation window — "
-                "likely the same actor moving from scanning to a direct attack"
-            ),
-            timestamp=e.timestamp,
-            source_ip=ip,
-            username=e.username,
-            details={
-                "recon_alert_type": recon_alert.alert_type,
-                "recon_first_seen": recon_alert.timestamp.isoformat(),
-                "auth_activity_type": e.event_type,
-                "minutes_between": round(delta.total_seconds() / 60, 1),
-                "correlation_window_minutes": correlation_window_minutes,
-            },
-        ))
+        alerts.append(
+            Alert(
+                alert_type="recon_to_intrusion",
+                severity=Severity.CRITICAL,
+                description=(
+                    "Web reconnaissance from this IP was followed by SSH "
+                    "authentication activity within the correlation window — "
+                    "likely the same actor moving from scanning to a direct attack"
+                ),
+                timestamp=e.timestamp,
+                source_ip=ip,
+                username=e.username,
+                details={
+                    "recon_alert_type": recon_alert.alert_type,
+                    "recon_first_seen": recon_alert.timestamp.isoformat(),
+                    "auth_activity_type": e.event_type,
+                    "minutes_between": round(delta.total_seconds() / 60, 1),
+                    "correlation_window_minutes": correlation_window_minutes,
+                },
+            )
+        )
         already_flagged.add(ip)
     return alerts
 
 
 def run_all_detectors(
-    events: List[LogEvent],
+    events: list[LogEvent],
     brute_force_threshold: int = 5,
     brute_force_window: int = 5,
     privesc_threshold: int = 3,
@@ -336,9 +367,9 @@ def run_all_detectors(
     scan_threshold: int = 10,
     scan_window: int = 2,
     correlation_window: int = 60,
-) -> List[Alert]:
+) -> list[Alert]:
     """Run every applicable detector and return alerts sorted by severity (highest first)."""
-    alerts: List[Alert] = []
+    alerts: list[Alert] = []
     alerts += detect_brute_force(events, brute_force_threshold, brute_force_window)
     alerts += detect_compromised_credential(events, brute_force_window)
     alerts += detect_privilege_escalation(events, privesc_threshold, privesc_window)

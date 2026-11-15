@@ -25,7 +25,8 @@ import os
 import re
 import stat
 from collections.abc import Iterable, Iterator, Sequence
-from datetime import datetime, timezone, tzinfo
+from datetime import UTC, datetime, tzinfo
+from typing import Any
 
 from .models import LogEvent, ParseResult
 
@@ -38,7 +39,8 @@ _MB = 1024 * 1024
 # auth.log (syslog) parsing
 # --------------------------------------------------------------------------
 
-# Aug 10 09:15:32 hostname sshd[12345]: Failed password for invalid user admin from 203.0.113.7 port 51234 ssh2
+# Aug 10 09:15:32 hostname sshd[12345]: Failed password for invalid user admin
+#     from 203.0.113.7 port 51234 ssh2
 _SSH_FAILED_RE = re.compile(
     r"^(?P<ts>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+\S+\s+sshd\[\d+\]:\s+"
     r"Failed password for (?:invalid user )?(?P<user>\S+) from (?P<ip>\S+) port \d+"
@@ -56,7 +58,8 @@ _SSH_INVALID_USER_RE = re.compile(
     r"Invalid user (?P<user>\S+) from (?P<ip>\S+)"
 )
 
-# Aug 10 09:20:11 hostname sudo:   bob : user NOT in sudoers ; TTY=pts/0 ; PWD=/home/bob ; USER=root ; COMMAND=/bin/bash
+# Aug 10 09:20:11 hostname sudo:   bob : user NOT in sudoers ; TTY=pts/0 ;
+#     PWD=/home/bob ; USER=root ; COMMAND=/bin/bash
 _SUDO_FAIL_RE = re.compile(
     r"^(?P<ts>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+\S+\s+sudo:\s+"
     r"(?P<user>\S+)\s*:\s*(?P<reason>user NOT in sudoers|.*authentication failure.*)"
@@ -88,9 +91,16 @@ def _parse_syslog_timestamp(ts: str, year: int, tz: tzinfo) -> datetime:
     return datetime.strptime(f"{year} {ts}", "%Y %b %d %H:%M:%S").replace(tzinfo=tz)
 
 
-def parse_auth_log(
-    lines: Iterable[str], year: int | None = None, tz: tzinfo = timezone.utc
-) -> ParseResult:
+def _match_auth_rule(line: str) -> tuple[re.Match[str], str] | None:
+    """The first auth rule matching ``line`` and its event type, or None."""
+    for regex, event_type in _AUTH_RULES:
+        match = regex.match(line)
+        if match:
+            return match, event_type
+    return None
+
+
+def parse_auth_log(lines: Iterable[str], year: int | None = None, tz: tzinfo = UTC) -> ParseResult:
     """Parse auth.log lines. ``year`` defaults to the current year in ``tz``."""
     if year is None:
         year = datetime.now(tz).year
@@ -99,19 +109,17 @@ def parse_auth_log(
         line = raw.rstrip("\r\n")
         if not line.strip():
             continue
-        for regex, event_type in _AUTH_RULES:
-            match = regex.match(line)
-            if match:
-                break
-        else:
+        matched = _match_auth_rule(line)
+        if matched is None:
             continue  # not an entry this tool looks at
+        match, event_type = matched
         try:
             timestamp = _parse_syslog_timestamp(match["ts"], year, tz)
         except ValueError:
             result.skipped_lines += 1
             continue
         groups = match.groupdict()
-        extra = {key: groups[key] for key in ("reason", "command") if key in groups}
+        extra: dict[str, Any] = {key: groups[key] for key in ("reason", "command") if key in groups}
         result.events.append(
             LogEvent(
                 timestamp=timestamp,
@@ -130,7 +138,8 @@ def parse_auth_log(
 # Apache / Nginx combined access log parsing
 # --------------------------------------------------------------------------
 
-# 203.0.113.7 - - [10/Aug/2026:09:15:32 +0000] "GET /admin/login.php HTTP/1.1" 404 1234 "-" "Mozilla/5.0"
+# 203.0.113.7 - - [10/Aug/2026:09:15:32 +0000] "GET /admin/login.php HTTP/1.1" 404 1234
+#     "-" "Mozilla/5.0"
 _ACCESS_LOG_RE = re.compile(
     r"^(?P<ip>\S+) \S+ \S+ \[(?P<ts>[^\]]+)\] "
     r'"(?P<method>[A-Z]+) (?P<path>\S+) \S+" '
@@ -138,7 +147,7 @@ _ACCESS_LOG_RE = re.compile(
 )
 
 
-def parse_apache_log(lines: Iterable[str], tz: tzinfo = timezone.utc) -> ParseResult:
+def parse_apache_log(lines: Iterable[str], tz: tzinfo = UTC) -> ParseResult:
     """Parse combined-format lines. Each timestamp's own offset is honored, then the
     timestamp is converted to ``tz``."""
     result = ParseResult(log_type="apache")
@@ -188,9 +197,7 @@ class FileTooLargeError(ValueError):
     """The input file is larger than the configured limit."""
 
     def __init__(self, path: str, size: int, max_bytes: int) -> None:
-        super().__init__(
-            f"{path} is {size / _MB:.1f} MB, over the {max_bytes / _MB:g} MB limit"
-        )
+        super().__init__(f"{path} is {size / _MB:.1f} MB, over the {max_bytes / _MB:g} MB limit")
         self.path = path
         self.size = size
         self.max_bytes = max_bytes
@@ -219,7 +226,7 @@ def parse_log_file(
     path: str,
     log_type: str = "auto",
     year: int | None = None,
-    tz: tzinfo = timezone.utc,
+    tz: tzinfo = UTC,
     max_bytes: int = DEFAULT_MAX_FILE_MB * _MB,
 ) -> ParseResult:
     """Parse one log file, streaming it line by line.

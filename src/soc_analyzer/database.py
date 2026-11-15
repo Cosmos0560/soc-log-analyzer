@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from .models import Alert, LogEvent
 
@@ -49,7 +48,7 @@ def db_timestamp(value: datetime) -> str:
     """ISO 8601 for storage. Aware timestamps are stored in UTC so that sorting the
     TEXT column sorts by time, whatever --tz the run used."""
     if value.tzinfo is not None:
-        value = value.astimezone(timezone.utc)
+        value = value.astimezone(UTC)
     return value.isoformat()
 
 
@@ -60,36 +59,53 @@ def init_db(path: str) -> sqlite3.Connection:
     return conn
 
 
-def store_events(conn: sqlite3.Connection, events: List[LogEvent]) -> None:
+def store_events(conn: sqlite3.Connection, events: list[LogEvent]) -> None:
     conn.executemany(
         """INSERT INTO events
-           (timestamp, source, event_type, source_ip, username, status_code, path, method, raw_line, extra)
+           (timestamp, source, event_type, source_ip, username, status_code, path, method,
+            raw_line, extra)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         [
-            (db_timestamp(e.timestamp), e.source, e.event_type, e.source_ip,
-             e.username, e.status_code, e.path, e.method, e.raw_line,
-             json.dumps(e.extra) if e.extra else None)
+            (
+                db_timestamp(e.timestamp),
+                e.source,
+                e.event_type,
+                e.source_ip,
+                e.username,
+                e.status_code,
+                e.path,
+                e.method,
+                e.raw_line,
+                json.dumps(e.extra) if e.extra else None,
+            )
             for e in events
         ],
     )
     conn.commit()
 
 
-def store_alerts(conn: sqlite3.Connection, alerts: List[Alert]) -> None:
+def store_alerts(conn: sqlite3.Connection, alerts: list[Alert]) -> None:
     conn.executemany(
         """INSERT INTO alerts
            (alert_type, severity, description, timestamp, source_ip, username, details)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
         [
-            (a.alert_type, a.severity.value, a.description, db_timestamp(a.timestamp),
-             a.source_ip, a.username, json.dumps(a.details))
+            (
+                a.alert_type,
+                a.severity.value,
+                a.description,
+                db_timestamp(a.timestamp),
+                a.source_ip,
+                a.username,
+                json.dumps(a.details),
+            )
             for a in alerts
         ],
     )
     conn.commit()
 
 
-def query_alerts(conn: sqlite3.Connection, severity: Optional[str] = None) -> List[sqlite3.Row]:
+def query_alerts(conn: sqlite3.Connection, severity: str | None = None) -> list[sqlite3.Row]:
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     if severity:

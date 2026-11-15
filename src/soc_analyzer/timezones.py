@@ -17,7 +17,7 @@ Accepted forms:
 from __future__ import annotations
 
 import re
-from datetime import timedelta, timezone, tzinfo
+from datetime import UTC, timedelta, timezone, tzinfo
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 _OFFSET_RE = re.compile(r"^([+-])(\d{2}):?(\d{2})$")
@@ -27,7 +27,7 @@ def parse_timezone(spec: str) -> tzinfo:
     """Turn a ``--tz`` value into a tzinfo. Raises ValueError with a helpful message."""
     text = spec.strip()
     if text.upper() in {"UTC", "Z"}:
-        return timezone.utc
+        return UTC
     match = _OFFSET_RE.match(text)
     if match:
         sign, hours, minutes = match.group(1), int(match.group(2)), int(match.group(3))

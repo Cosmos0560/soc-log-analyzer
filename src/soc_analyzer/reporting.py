@@ -96,7 +96,9 @@ def format_summary(severities: Iterable[str]) -> str:
     total = sum(counts.values())
     known = [f"{sev}: {counts[sev]}" for sev in _SEVERITY_ORDER if counts[sev]]
     unknown = [
-        f"{escape_for_terminal(sev)}: {n}" for sev, n in counts.items() if sev not in _SEVERITY_ORDER
+        f"{escape_for_terminal(sev)}: {n}"
+        for sev, n in counts.items()
+        if sev not in _SEVERITY_ORDER
     ]
     return f"\nSummary: {total} alert(s) — " + ", ".join(known + unknown)
 

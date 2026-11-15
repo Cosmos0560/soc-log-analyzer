@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from enum import StrEnum
+from typing import Any
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -31,13 +31,13 @@ class LogEvent:
     timestamp: datetime
     source: str  # e.g. "auth", "apache"
     event_type: str  # e.g. "failed_login", "accepted_login", "http_request"
-    source_ip: Optional[str] = None
-    username: Optional[str] = None
-    status_code: Optional[int] = None
-    path: Optional[str] = None
-    method: Optional[str] = None
+    source_ip: str | None = None
+    username: str | None = None
+    status_code: int | None = None
+    path: str | None = None
+    method: str | None = None
     raw_line: str = ""
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -48,11 +48,11 @@ class Alert:
     severity: Severity
     description: str
     timestamp: datetime
-    source_ip: Optional[str] = None
-    username: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    source_ip: str | None = None
+    username: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "alert_type": self.alert_type,
             "severity": self.severity.value,
@@ -75,5 +75,5 @@ class ParseResult:
     """
 
     log_type: str
-    events: List[LogEvent] = field(default_factory=list)
+    events: list[LogEvent] = field(default_factory=list)
     skipped_lines: int = 0

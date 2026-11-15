@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta, timezone
+from datetime import UTC, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -12,7 +12,7 @@ from soc_analyzer.timezones import parse_timezone, timezone_label
 
 @pytest.mark.parametrize("spec", ["UTC", "utc", "Z", " UTC "])
 def test_utc_spellings(spec: str) -> None:
-    assert parse_timezone(spec) is timezone.utc
+    assert parse_timezone(spec) is UTC
 
 
 @pytest.mark.parametrize(
@@ -37,7 +37,7 @@ def test_iana_name() -> None:
 
 
 def test_utc_label() -> None:
-    assert timezone_label(timezone.utc) == "UTC"
+    assert timezone_label(UTC) == "UTC"
 
 
 @pytest.mark.parametrize("spec", ["+24:00", "+05:60"])

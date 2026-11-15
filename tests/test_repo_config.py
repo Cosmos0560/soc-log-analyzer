@@ -42,3 +42,19 @@ def test_gitignore_covers_required_paths() -> None:
     for entry in (".venv/", ".venv-wsl/", ".venv-release/", "build/", "dist/", "*.egg-info/",
                   "graphify-out/", ".graphifyignore", "*.db"):  # fmt: skip
         assert entry in lines
+
+
+def test_pyproject_guardrails() -> None:
+    import tomllib
+
+    data = tomllib.loads(read("pyproject.toml"))
+    assert data["project"]["requires-python"] == ">=3.11"
+    assert data["project"]["dependencies"] == []  # the tool itself is stdlib-only
+    assert {"pytest", "pytest-cov", "ruff", "mypy", "tzdata"} <= set(
+        data["project"]["optional-dependencies"]["dev"]
+    )
+    assert data["tool"]["ruff"]["target-version"] == "py311"
+    assert data["tool"]["ruff"]["extend-exclude"] == [".venv-wsl", ".venv-release"]
+    assert data["tool"]["mypy"] == {"strict": True, "files": ["src"], "python_version": "3.11"}
+    assert data["tool"]["coverage"]["run"] == {"source": ["soc_analyzer"], "branch": True}
+    assert (ROOT / "src" / "soc_analyzer" / "py.typed").is_file()

@@ -181,7 +181,9 @@ def test_cli_smoke_passes_on_the_real_samples(gate: ModuleType) -> None:
     assert gate.check_cli_smoke() == []
 
 
-def test_cli_smoke_reports_a_missing_line(gate: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_smoke_reports_a_missing_line(
+    gate: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         gate, "SMOKE_RUNS", [(["--file", "examples/sample_auth.log"], "no such text")]
     )
@@ -189,7 +191,9 @@ def test_cli_smoke_reports_a_missing_line(gate: ModuleType, monkeypatch: pytest.
     assert len(problems) == 1 and "expected" in problems[0]
 
 
-def test_cli_smoke_reports_a_failing_exit(gate: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_smoke_reports_a_failing_exit(
+    gate: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(gate, "SMOKE_RUNS", [(["--file", "no/such/file.log"], "x")])
     problems = gate.check_cli_smoke()
     assert len(problems) == 1 and "exit code 1" in problems[0]

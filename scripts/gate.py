@@ -220,9 +220,7 @@ GRAPH_PATHS = ("graphify-out", ".graphifyignore")
 
 def graph_problems(paths: Iterable[str]) -> list[str]:
     return [
-        f"graphify file is tracked or staged: {p}"
-        for p in paths
-        if p.split("/")[0] in GRAPH_PATHS
+        f"graphify file is tracked or staged: {p}" for p in paths if p.split("/")[0] in GRAPH_PATHS
     ]
 
 
@@ -264,6 +262,17 @@ def run_tool(args: Sequence[str]) -> list[str]:
     print(f"     $ {' '.join(args[1:])}", flush=True)
     result = subprocess.run(list(args), cwd=ROOT, check=False)
     return [] if result.returncode == 0 else [f"exit code {result.returncode}"]
+
+
+def check_lint() -> list[str]:
+    py = sys.executable
+    return run_tool([py, "-m", "ruff", "check", "."]) or run_tool(
+        [py, "-m", "ruff", "format", "--check", "."]
+    )
+
+
+def check_types() -> list[str]:
+    return run_tool([sys.executable, "-m", "mypy"])
 
 
 COVERAGE_MIN = 90
@@ -320,6 +329,8 @@ def check_cli_smoke() -> list[str]:
 # --------------------------------------------------------------------------- runner
 
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
+    ("ruff check + ruff format --check", check_lint),
+    ("mypy --strict (src/)", check_types),
     (f"pytest + coverage >= {COVERAGE_MIN}%", check_tests),
     ("AST ban (execution primitives in src/)", check_ast_ban),
     ("secret and email scan", check_secret_scan),

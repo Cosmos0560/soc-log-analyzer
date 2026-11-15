@@ -10,14 +10,19 @@ BASE = datetime(2026, 8, 10, 9, 0, 0)
 
 def _alert(source_ip=None, username=None):
     return Alert(
-        alert_type="brute_force", severity=Severity.HIGH,
-        description="test", timestamp=BASE, source_ip=source_ip, username=username,
+        alert_type="brute_force",
+        severity=Severity.HIGH,
+        description="test",
+        timestamp=BASE,
+        source_ip=source_ip,
+        username=username,
     )
 
 
 # --------------------------------------------------------------------------
 # AllowList.filter_alerts
 # --------------------------------------------------------------------------
+
 
 def test_filter_alerts_suppresses_matching_ip():
     allowlist = AllowList(ips={"203.0.113.4"})
@@ -67,6 +72,7 @@ def test_nonempty_allowlist_is_truthy():
 # load_allowlist_file
 # --------------------------------------------------------------------------
 
+
 def test_load_allowlist_file_parses_ips_and_users(tmp_path):
     f = tmp_path / "allow.txt"
     f.write_text("ip:203.0.113.4\nuser:webapp\n")
@@ -105,6 +111,7 @@ def test_load_allowlist_file_missing_file_raises():
 # --------------------------------------------------------------------------
 # build_allowlist (CLI flags + file, combined)
 # --------------------------------------------------------------------------
+
 
 def test_build_allowlist_combines_cli_and_file(tmp_path):
     f = tmp_path / "allow.txt"

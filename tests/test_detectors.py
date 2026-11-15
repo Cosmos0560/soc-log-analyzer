@@ -16,13 +16,17 @@ BASE = datetime(2026, 8, 10, 9, 0, 0)
 def _login_event(ip, event_type="failed_login", user="root", minutes=0.0, seconds=0):
     return LogEvent(
         timestamp=BASE + timedelta(minutes=minutes, seconds=seconds),
-        source="auth", event_type=event_type, source_ip=ip, username=user,
+        source="auth",
+        event_type=event_type,
+        source_ip=ip,
+        username=user,
     )
 
 
 # --------------------------------------------------------------------------
 # Brute force
 # --------------------------------------------------------------------------
+
 
 def test_brute_force_triggers_at_threshold():
     events = [_login_event("203.0.113.4", seconds=i * 6) for i in range(5)]
@@ -44,18 +48,26 @@ def test_brute_force_ignores_events_outside_window():
 
 def test_brute_force_boundary_exactly_at_window_counts():
     # 5 minute window; first and last event exactly 5 minutes apart should count
-    events = [_login_event("203.0.113.4", minutes=0), _login_event("203.0.113.4", minutes=1),
-              _login_event("203.0.113.4", minutes=2), _login_event("203.0.113.4", minutes=3),
-              _login_event("203.0.113.4", minutes=5)]
+    events = [
+        _login_event("203.0.113.4", minutes=0),
+        _login_event("203.0.113.4", minutes=1),
+        _login_event("203.0.113.4", minutes=2),
+        _login_event("203.0.113.4", minutes=3),
+        _login_event("203.0.113.4", minutes=5),
+    ]
     alerts = detect_brute_force(events, threshold=5, window_minutes=5)
     assert len(alerts) == 1
 
 
 def test_brute_force_boundary_just_outside_window_excludes_oldest():
     # last event 5 min + 1 second after the first -> only 4 of 5 fall in-window
-    events = [_login_event("203.0.113.4", minutes=0), _login_event("203.0.113.4", minutes=1),
-              _login_event("203.0.113.4", minutes=2), _login_event("203.0.113.4", minutes=3),
-              _login_event("203.0.113.4", minutes=5, seconds=1)]
+    events = [
+        _login_event("203.0.113.4", minutes=0),
+        _login_event("203.0.113.4", minutes=1),
+        _login_event("203.0.113.4", minutes=2),
+        _login_event("203.0.113.4", minutes=3),
+        _login_event("203.0.113.4", minutes=5, seconds=1),
+    ]
     assert detect_brute_force(events, threshold=5, window_minutes=5) == []
 
 
@@ -72,6 +84,7 @@ def test_brute_force_tracks_multiple_ips_independently():
 # --------------------------------------------------------------------------
 # Compromised credential (the sliding-window fix)
 # --------------------------------------------------------------------------
+
 
 def test_compromised_credential_detected_for_genuine_burst():
     events = [_login_event("203.0.113.4", "failed_login", minutes=i) for i in range(4)]
@@ -125,6 +138,7 @@ def test_compromised_credential_tracks_multiple_ips_independently():
 # Privilege escalation (now windowed)
 # --------------------------------------------------------------------------
 
+
 def test_privilege_escalation_triggers_within_window():
     events = [
         LogEvent(BASE + timedelta(minutes=i), "auth", "sudo_failure", username="bob")
@@ -162,10 +176,17 @@ def test_privilege_escalation_tracks_users_independently():
 # Web scanning
 # --------------------------------------------------------------------------
 
+
 def test_web_scanning_detects_404_burst():
     events = [
-        LogEvent(BASE + timedelta(seconds=i), "apache", "http_request",
-                 source_ip="198.51.100.8", status_code=404, path=f"/x{i}")
+        LogEvent(
+            BASE + timedelta(seconds=i),
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            status_code=404,
+            path=f"/x{i}",
+        )
         for i in range(10)
     ]
     alerts = detect_web_scanning(events, threshold=10, window_minutes=2)
@@ -177,35 +198,66 @@ def test_web_scanning_detects_404_burst():
 # Suspicious paths — including the false-positive fix
 # --------------------------------------------------------------------------
 
+
 def test_suspicious_path_matches_sensitive_file():
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/.env", status_code=404)]
+    events = [
+        LogEvent(
+            BASE, "apache", "http_request", source_ip="198.51.100.8", path="/.env", status_code=404
+        )
+    ]
     alerts = detect_suspicious_paths(events)
     assert len(alerts) == 1
     assert alerts[0].alert_type == "suspicious_request"
 
 
 def test_suspicious_path_matches_nested_sensitive_file():
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/app/.git/config", status_code=404)]
+    events = [
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/app/.git/config",
+            status_code=404,
+        )
+    ]
     assert len(detect_suspicious_paths(events)) == 1
 
 
 def test_suspicious_path_catches_url_encoded_sqli():
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/search?q=%27+union+select+1--", status_code=500)]
+    events = [
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/search?q=%27+union+select+1--",
+            status_code=500,
+        )
+    ]
     assert len(detect_suspicious_paths(events)) == 1
 
 
 def test_suspicious_path_ignores_clean_request():
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/about", status_code=200)]
+    events = [
+        LogEvent(
+            BASE, "apache", "http_request", source_ip="198.51.100.8", path="/about", status_code=200
+        )
+    ]
     assert detect_suspicious_paths(events) == []
 
 
 def test_suspicious_path_prefix_match_still_flags_admin_login():
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/admin/login", status_code=404)]
+    events = [
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/admin/login",
+            status_code=404,
+        )
+    ]
     assert len(detect_suspicious_paths(events)) == 1
 
 
@@ -213,10 +265,22 @@ def test_suspicious_path_does_not_false_positive_on_admin_substring():
     # These paths merely CONTAIN "admin" as a substring but are not actually
     # under the sensitive "/admin" prefix -- must not be flagged.
     events = [
-        LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                 path="/my-admin-panel", status_code=200),
-        LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                 path="/administrative-tools", status_code=200),
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/my-admin-panel",
+            status_code=200,
+        ),
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/administrative-tools",
+            status_code=200,
+        ),
     ]
     assert detect_suspicious_paths(events) == []
 
@@ -225,8 +289,16 @@ def test_suspicious_path_administrator_still_flagged_on_its_own_merits():
     # /administrator is a known Joomla admin panel path -- it should still be
     # flagged, but via its own explicit prefix entry, not an accidental
     # substring match against "/admin".
-    events = [LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.8",
-                        path="/administrator", status_code=404)]
+    events = [
+        LogEvent(
+            BASE,
+            "apache",
+            "http_request",
+            source_ip="198.51.100.8",
+            path="/administrator",
+            status_code=404,
+        )
+    ]
     assert len(detect_suspicious_paths(events)) == 1
 
 
@@ -234,18 +306,26 @@ def test_suspicious_path_administrator_still_flagged_on_its_own_merits():
 # Cross-source correlation (recon -> intrusion)
 # --------------------------------------------------------------------------
 
+
 def _scan_burst(ip, start_minutes=0):
     """10 404s in under 2 minutes from `ip` -- enough to trip detect_web_scanning."""
     return [
-        LogEvent(BASE + timedelta(minutes=start_minutes, seconds=i * 6), "apache",
-                 "http_request", source_ip=ip, status_code=404, path=f"/scan{i}")
+        LogEvent(
+            BASE + timedelta(minutes=start_minutes, seconds=i * 6),
+            "apache",
+            "http_request",
+            source_ip=ip,
+            status_code=404,
+            path=f"/scan{i}",
+        )
         for i in range(10)
     ]
 
 
 def _ssh_failed(ip, start_minutes, user="admin"):
-    return LogEvent(BASE + timedelta(minutes=start_minutes), "auth",
-                     "failed_login", source_ip=ip, username=user)
+    return LogEvent(
+        BASE + timedelta(minutes=start_minutes), "auth", "failed_login", source_ip=ip, username=user
+    )
 
 
 def test_recon_to_intrusion_flags_scan_then_ssh_from_same_ip():
@@ -276,7 +356,9 @@ def test_recon_to_intrusion_no_recon_means_no_alert():
 
 def test_recon_to_intrusion_does_not_flag_auth_activity_before_recon():
     # SSH activity happens BEFORE the web recon -- wrong order, must not correlate.
-    events = [_ssh_failed("198.51.100.9", start_minutes=0)] + _scan_burst("198.51.100.9", start_minutes=30)
+    events = [_ssh_failed("198.51.100.9", start_minutes=0)] + _scan_burst(
+        "198.51.100.9", start_minutes=30
+    )
     assert detect_recon_to_intrusion(events) == []
 
 
@@ -293,8 +375,9 @@ def test_recon_to_intrusion_one_alert_per_ip():
 def test_recon_to_intrusion_fires_from_suspicious_path_alone():
     # A single sensitive-file hit (no 404 burst needed) still counts as recon.
     events = [
-        LogEvent(BASE, "apache", "http_request", source_ip="198.51.100.9",
-                 path="/.env", status_code=404),
+        LogEvent(
+            BASE, "apache", "http_request", source_ip="198.51.100.9", path="/.env", status_code=404
+        ),
         _ssh_failed("198.51.100.9", start_minutes=5),
     ]
     alerts = detect_recon_to_intrusion(events)
@@ -305,6 +388,7 @@ def test_recon_to_intrusion_fires_from_suspicious_path_alone():
 # --------------------------------------------------------------------------
 # General robustness
 # --------------------------------------------------------------------------
+
 
 def test_detectors_handle_empty_event_list():
     assert detect_brute_force([]) == []
@@ -321,3 +405,23 @@ def test_brute_force_handles_ipv6_source():
     alerts = detect_brute_force(events, threshold=5, window_minutes=5)
     assert len(alerts) == 1
     assert alerts[0].source_ip == ip
+
+
+def test_events_without_ip_or_user_never_form_an_alert_group():
+    no_ip = [
+        LogEvent(timestamp=BASE + timedelta(seconds=i), source="auth", event_type=kind)
+        for i in range(10)
+        for kind in ("failed_login", "accepted_login")
+    ]
+    no_ip += [
+        LogEvent(timestamp=BASE, source="apache", event_type="http_request", status_code=404)
+        for _ in range(20)
+    ]
+    no_user = [
+        LogEvent(timestamp=BASE + timedelta(seconds=i), source="auth", event_type="sudo_failure")
+        for i in range(5)
+    ]
+    assert detect_brute_force(no_ip, threshold=3) == []
+    assert detect_compromised_credential(no_ip, precede_threshold=1) == []
+    assert detect_web_scanning(no_ip, threshold=3) == []
+    assert detect_privilege_escalation(no_user, threshold=3) == []

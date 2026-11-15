@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -24,8 +24,7 @@ REPLACEMENT = chr(0xFFFD)
 
 SSH_FAIL = "{date} 09:15:32 host sshd[1]: Failed password for root from 203.0.113.7 port 22 ssh2"
 SUDO_OK = (
-    "Aug 10 09:20:30 host sudo:   root : TTY=pts/0 ; PWD=/root ; USER=root ; "
-    "COMMAND=/bin/su -"
+    "Aug 10 09:20:30 host sudo:   root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/su -"
 )
 ACCESS = '203.0.113.7 - - [{ts}] "GET / HTTP/1.1" 200 10 "-" "curl"'
 
@@ -43,7 +42,7 @@ def test_feb_29_in_a_non_leap_year_is_skipped_and_counted() -> None:
 def test_feb_29_in_a_leap_year_parses() -> None:
     result = parse_auth_log([SSH_FAIL.format(date="Feb 29")], year=2028)
     assert result.skipped_lines == 0
-    assert result.events[0].timestamp == datetime(2028, 2, 29, 9, 15, 32, tzinfo=timezone.utc)
+    assert result.events[0].timestamp == datetime(2028, 2, 29, 9, 15, 32, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(
@@ -83,7 +82,7 @@ def test_syslog_default_is_utc() -> None:
 
 def test_default_year_is_current_year_in_zone() -> None:
     event = parse_auth_log([SSH_FAIL.format(date="Aug 10")]).events[0]
-    assert event.timestamp.year == datetime.now(timezone.utc).year
+    assert event.timestamp.year == datetime.now(UTC).year
 
 
 def test_access_log_offset_is_honored_then_converted() -> None:

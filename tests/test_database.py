@@ -15,26 +15,33 @@ def conn(tmp_path):
 
 
 def test_store_events_persists_core_fields(conn):
-    events = [LogEvent(
-        timestamp=datetime(2026, 8, 10, 9, 0, 0), source="auth",
-        event_type="sudo_failure", username="bob", source_ip="203.0.113.4",
-        extra={"reason": "user NOT in sudoers"},
-    )]
+    events = [
+        LogEvent(
+            timestamp=datetime(2026, 8, 10, 9, 0, 0),
+            source="auth",
+            event_type="sudo_failure",
+            username="bob",
+            source_ip="203.0.113.4",
+            extra={"reason": "user NOT in sudoers"},
+        )
+    ]
     store_events(conn, events)
 
-    row = conn.execute(
-        "SELECT event_type, username, source_ip FROM events"
-    ).fetchone()
+    row = conn.execute("SELECT event_type, username, source_ip FROM events").fetchone()
     assert row == ("sudo_failure", "bob", "203.0.113.4")
 
 
 def test_extra_field_is_persisted_not_lost(conn):
     conn.row_factory = None
-    events = [LogEvent(
-        timestamp=datetime(2026, 8, 10, 9, 0, 0), source="auth",
-        event_type="sudo_success", username="root",
-        extra={"command": "/usr/bin/systemctl restart nginx"},
-    )]
+    events = [
+        LogEvent(
+            timestamp=datetime(2026, 8, 10, 9, 0, 0),
+            source="auth",
+            event_type="sudo_success",
+            username="root",
+            extra={"command": "/usr/bin/systemctl restart nginx"},
+        )
+    ]
     store_events(conn, events)
 
     cur = conn.execute("SELECT extra FROM events")
@@ -44,8 +51,14 @@ def test_extra_field_is_persisted_not_lost(conn):
 
 
 def test_extra_field_is_null_when_empty(conn):
-    events = [LogEvent(timestamp=datetime(2026, 8, 10, 9, 0, 0), source="auth",
-                        event_type="accepted_login", username="deploy")]
+    events = [
+        LogEvent(
+            timestamp=datetime(2026, 8, 10, 9, 0, 0),
+            source="auth",
+            event_type="accepted_login",
+            username="deploy",
+        )
+    ]
     store_events(conn, events)
     cur = conn.execute("SELECT extra FROM events")
     (extra_json,) = cur.fetchone()
@@ -54,10 +67,20 @@ def test_extra_field_is_null_when_empty(conn):
 
 def test_query_alerts_filters_by_severity(conn):
     alerts = [
-        Alert(alert_type="brute_force", severity=Severity.HIGH,
-              description="x", timestamp=datetime(2026, 8, 10, 9, 0, 0), source_ip="203.0.113.4"),
-        Alert(alert_type="privilege_escalation_attempt", severity=Severity.MEDIUM,
-              description="y", timestamp=datetime(2026, 8, 10, 9, 5, 0), username="bob"),
+        Alert(
+            alert_type="brute_force",
+            severity=Severity.HIGH,
+            description="x",
+            timestamp=datetime(2026, 8, 10, 9, 0, 0),
+            source_ip="203.0.113.4",
+        ),
+        Alert(
+            alert_type="privilege_escalation_attempt",
+            severity=Severity.MEDIUM,
+            description="y",
+            timestamp=datetime(2026, 8, 10, 9, 5, 0),
+            username="bob",
+        ),
     ]
     store_alerts(conn, alerts)
 
@@ -72,8 +95,10 @@ def test_query_alerts_filters_by_severity(conn):
 def test_aware_timestamps_are_stored_in_utc(conn):
     plus_0530 = timezone(timedelta(hours=5, minutes=30))
     ts = datetime(2026, 8, 10, 9, 0, 0, tzinfo=plus_0530)
-    store_alerts(conn, [Alert(alert_type="brute_force", severity=Severity.HIGH,
-                              description="x", timestamp=ts)])
+    store_alerts(
+        conn,
+        [Alert(alert_type="brute_force", severity=Severity.HIGH, description="x", timestamp=ts)],
+    )
     (stored,) = conn.execute("SELECT timestamp FROM alerts").fetchone()
     assert stored == "2026-08-10T03:30:00+00:00"
 

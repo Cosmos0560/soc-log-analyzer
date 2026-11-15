@@ -94,7 +94,11 @@ def test_tz_offset_in_every_timestamp(capsys: pytest.CaptureFixture[str]) -> Non
     _, doc = run_json([*ALL_SAMPLES, "--year", "2026", "--tz", "+05:30", "--json"], capsys)
     assert doc["timezone"] == "+05:30"
     stamps = [a["timestamp"] for a in doc["alerts"]]
-    stamps += [a["details"]["recon_first_seen"] for a in doc["alerts"] if "recon_first_seen" in a["details"]]
+    stamps += [
+        a["details"]["recon_first_seen"]
+        for a in doc["alerts"]
+        if "recon_first_seen" in a["details"]
+    ]
     assert stamps and all(s.endswith("+05:30") for s in stamps)
 
 

@@ -6,15 +6,26 @@ build-backend = "hatchling.build"
 name = "soc-log-analyzer"
 dynamic = ["version"]
 description = "A lightweight Python log parser and rule-based threat detection engine for SOC analyst training."
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Otabek Yakubov" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
 dependencies = []
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "pytest-cov",
+    "ruff",
+    "mypy",
+    "build",
     "tzdata",
 ]
 
@@ -26,6 +37,20 @@ path = "src/soc_analyzer/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/soc_analyzer"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# ruff only excludes .venv by default; the two check venvs live in the project folder too.
+extend-exclude = [".venv-wsl", ".venv-release"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+python_version = "3.11"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
