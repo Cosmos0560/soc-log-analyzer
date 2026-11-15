@@ -1,0 +1,32 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git tag)",
+      "Bash(git tag *)",
+      "PowerShell(git push)",
+      "PowerShell(git push *)",
+      "PowerShell(git tag)",
+      "PowerShell(git tag *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_use.py\" || exit 2"
+          }
+        ]
+      }
+    ]
+  }
+}
