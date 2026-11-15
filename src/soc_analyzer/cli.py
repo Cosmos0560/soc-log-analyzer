@@ -11,9 +11,15 @@ from .allowlist import build_allowlist
 from .database import init_db, query_alerts, store_alerts, store_events
 from .detectors import run_all_detectors
 from .parsers import DEFAULT_MAX_FILE_MB, FileTooLargeError, parse_log_file
-from .reporting import alerts_to_json, print_alerts, print_stored_alerts
+from .reporting import (
+    analysis_document,
+    print_alerts,
+    print_stored_alerts,
+    stored_alerts_document,
+    to_json,
+)
 from .sanitize import escape_for_terminal
-from .timezones import parse_timezone
+from .timezones import parse_timezone, timezone_label
 
 
 def _tz_arg(value: str) -> tzinfo:
@@ -57,7 +63,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help=f"Refuse log files larger than this many megabytes "
                          f"(default: {DEFAULT_MAX_FILE_MB})")
     p.add_argument("--db", default=None, help="SQLite file to persist events + alerts into")
-    p.add_argument("--json", action="store_true", help="Print alerts as JSON instead of console output")
+    p.add_argument("--json", action="store_true",
+                    help="Print one JSON document (schema: docs/OUTPUT_SCHEMA.md) instead of "
+                         "console output; status messages go to stderr")
     p.add_argument("--no-color", action="store_true", help="Disable colored console output")
 
     grp = p.add_argument_group("detection thresholds")
@@ -123,8 +131,7 @@ def _run_query_mode(args) -> int:
         _error(f"cannot read database {args.db!r}: {exc}")
         return 1
     if args.json:
-        import json
-        print(json.dumps([dict(r) for r in rows], indent=2))
+        print(to_json(stored_alerts_document(rows)))
     else:
         print_stored_alerts(rows, no_color=args.no_color)
     return 0
@@ -202,7 +209,13 @@ def main(argv=None) -> int:
         alerts, suppressed = allowlist.filter_alerts(alerts)
 
     if args.json:
-        print(alerts_to_json(alerts))
+        document = analysis_document(
+            sources=list(zip(args.file, results)),
+            alerts=alerts,
+            suppressed_alerts=len(suppressed),
+            timezone_name=timezone_label(args.tz),
+        )
+        print(to_json(document))
     else:
         sources = escape_for_terminal(", ".join(args.file))
         print(f"[*] Parsed {len(events)} event(s) from {sources}\n")

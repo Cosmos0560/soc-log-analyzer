@@ -18,11 +18,11 @@ from soc_analyzer import cli
 from soc_analyzer.database import init_db
 from soc_analyzer.models import Alert, LogEvent, ParseResult, Severity
 from soc_analyzer.reporting import (
-    alerts_to_json,
     format_alert,
     format_summary,
     print_alerts,
     print_stored_alerts,
+    to_json,
 )
 from tests.terminal_payloads import PAYLOADS, RLO, unsafe_chars
 
@@ -93,11 +93,11 @@ def test_format_summary_escapes_unknown_severities() -> None:
 
 
 def test_json_output_escapes_control_characters() -> None:
-    text = alerts_to_json([_alert(username=p) for p in PAYLOADS.values()])
+    text = to_json({"alerts": [_alert(username=p).to_dict() for p in PAYLOADS.values()]})
     assert unsafe_chars(text) == []
     assert all(ord(ch) < 128 for ch in text)  # ensure_ascii: no raw non-ASCII either
     decoded = json.loads(text)
-    assert [a["username"] for a in decoded] == list(PAYLOADS.values())
+    assert [a["username"] for a in decoded["alerts"]] == list(PAYLOADS.values())
 
 
 # ---------------------------------------------------------------- stored alerts (SQLite)

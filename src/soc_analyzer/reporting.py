@@ -15,7 +15,8 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from .models import Alert, Severity
+from . import __version__
+from .models import Alert, ParseResult, Severity
 from .sanitize import escape_for_terminal
 
 _COLOR = {
@@ -117,8 +118,85 @@ def print_summary(alerts: Sequence[Alert]) -> None:
     print(format_summary(a.severity.value for a in alerts))
 
 
-def alerts_to_json(alerts: Sequence[Alert]) -> str:
-    return json.dumps([a.to_dict() for a in alerts], indent=2)
+# --------------------------------------------------------------------------
+# JSON output contract (docs/OUTPUT_SCHEMA.md)
+# --------------------------------------------------------------------------
+
+# MAJOR.MINOR: a minor bump only adds fields; a major bump removes, renames or changes
+# the meaning of a field. Consumers should check the major version.
+SCHEMA_VERSION = "1.0"
+
+
+def _by_severity(severities: Iterable[str]) -> dict[str, int]:
+    """Counts for every known severity, highest first, zeros included."""
+    counts = Counter(severities)
+    return {sev: counts[sev] for sev in _SEVERITY_ORDER}
+
+
+def analysis_document(
+    *,
+    sources: Sequence[tuple[str, ParseResult]],
+    alerts: Sequence[Alert],
+    suppressed_alerts: int,
+    timezone_name: str,
+) -> dict[str, Any]:
+    """The ``kind: "analysis"`` document printed by ``--json``."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "tool_version": __version__,
+        "kind": "analysis",
+        "timezone": timezone_name,
+        "sources": [
+            {
+                "path": path,
+                "log_type": result.log_type,
+                "events": len(result.events),
+                "skipped_lines": result.skipped_lines,
+            }
+            for path, result in sources
+        ],
+        "summary": {
+            "events": sum(len(result.events) for _, result in sources),
+            "skipped_lines": sum(result.skipped_lines for _, result in sources),
+            "alerts": len(alerts),
+            "suppressed_alerts": suppressed_alerts,
+            "by_severity": _by_severity(a.severity.value for a in alerts),
+        },
+        "alerts": [a.to_dict() for a in alerts],
+    }
+
+
+def stored_alerts_document(rows: Sequence[sqlite3.Row]) -> dict[str, Any]:
+    """The ``kind: "stored_alerts"`` document printed by ``--show-alerts --json``."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "tool_version": __version__,
+        "kind": "stored_alerts",
+        "summary": {
+            "alerts": len(rows),
+            "by_severity": _by_severity(str(row["severity"]) for row in rows),
+        },
+        "alerts": [
+            {
+                "id": row["id"],
+                "alert_type": row["alert_type"],
+                "severity": row["severity"],
+                "description": row["description"],
+                "timestamp": row["timestamp"],
+                "source_ip": row["source_ip"],
+                "username": row["username"],
+                "details": dict(_stored_details(row["details"])),
+            }
+            for row in rows
+        ],
+    }
+
+
+def to_json(document: Mapping[str, Any]) -> str:
+    """Serialize a document. ``ensure_ascii`` is part of the contract: every control and
+    non-ASCII character in log-derived text is written as a ``\\uXXXX`` escape, so the
+    raw output is always safe to view in a terminal."""
+    return json.dumps(document, indent=2, ensure_ascii=True)
 
 
 def _stored_details(raw: object) -> Mapping[str, Any]:

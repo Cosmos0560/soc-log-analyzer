@@ -1,0 +1,432 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "0.2.0",
+  "kind": "analysis",
+  "timezone": "UTC",
+  "sources": [
+    {
+      "path": "examples/sample_auth.log",
+      "log_type": "auth",
+      "events": 40,
+      "skipped_lines": 0
+    },
+    {
+      "path": "examples/sample_apache.log",
+      "log_type": "apache",
+      "events": 23,
+      "skipped_lines": 0
+    },
+    {
+      "path": "examples/sample_recon_apache.log",
+      "log_type": "apache",
+      "events": 15,
+      "skipped_lines": 0
+    },
+    {
+      "path": "examples/sample_recon_auth.log",
+      "log_type": "auth",
+      "events": 8,
+      "skipped_lines": 0
+    }
+  ],
+  "summary": {
+    "events": 86,
+    "skipped_lines": 0,
+    "alerts": 29,
+    "suppressed_alerts": 0,
+    "by_severity": {
+      "CRITICAL": 3,
+      "HIGH": 23,
+      "MEDIUM": 3,
+      "LOW": 0
+    }
+  },
+  "alerts": [
+    {
+      "alert_type": "possible_compromised_credential",
+      "severity": "CRITICAL",
+      "description": "Successful login immediately followed a burst of failed attempts from the same IP",
+      "timestamp": "2026-08-10T14:20:30+00:00",
+      "source_ip": "192.0.2.66",
+      "username": "root",
+      "details": {
+        "preceding_failures": 5,
+        "window_minutes": 5
+      }
+    },
+    {
+      "alert_type": "recon_to_intrusion",
+      "severity": "CRITICAL",
+      "description": "Web reconnaissance from this IP was followed by SSH authentication activity within the correlation window \u2014 likely the same actor moving from scanning to a direct attack",
+      "timestamp": "2026-08-10T14:20:00+00:00",
+      "source_ip": "192.0.2.66",
+      "username": "admin",
+      "details": {
+        "recon_alert_type": "suspicious_request",
+        "recon_first_seen": "2026-08-10T14:00:00+00:00",
+        "auth_activity_type": "failed_login",
+        "minutes_between": 20.0,
+        "correlation_window_minutes": 60
+      }
+    },
+    {
+      "alert_type": "possible_compromised_credential",
+      "severity": "CRITICAL",
+      "description": "Successful login immediately followed a burst of failed attempts from the same IP",
+      "timestamp": "2026-08-10T09:06:10+00:00",
+      "source_ip": "203.0.113.7",
+      "username": "root",
+      "details": {
+        "preceding_failures": 30,
+        "window_minutes": 5
+      }
+    },
+    {
+      "alert_type": "brute_force",
+      "severity": "HIGH",
+      "description": "Possible brute-force login attempt",
+      "timestamp": "2026-08-10T14:20:24+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "failed_attempts": 5,
+        "window_minutes": 5,
+        "usernames_tried": [
+          "admin",
+          "oracle",
+          "root",
+          "test",
+          "ubuntu"
+        ]
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /administrator",
+      "timestamp": "2026-08-10T14:00:54+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/administrator",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /admin",
+      "timestamp": "2026-08-10T14:00:48+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/admin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /phpmyadmin",
+      "timestamp": "2026-08-10T14:00:42+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/phpmyadmin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /wp-admin",
+      "timestamp": "2026-08-10T14:00:36+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/wp-admin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: wp-login.php",
+      "timestamp": "2026-08-10T14:00:30+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/wp-login.php",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: config.php",
+      "timestamp": "2026-08-10T14:00:24+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/config.php",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .ssh/id_rsa",
+      "timestamp": "2026-08-10T14:00:18+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/.ssh/id_rsa",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .aws/credentials",
+      "timestamp": "2026-08-10T14:00:12+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/.aws/credentials",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .git/config",
+      "timestamp": "2026-08-10T14:00:06+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/.git/config",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .env",
+      "timestamp": "2026-08-10T14:00:00+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "path": "/.env",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: union select",
+      "timestamp": "2026-08-10T10:06:34+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/search?q=%27+union+select+1--+",
+        "method": "GET",
+        "status": 500
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /administrator",
+      "timestamp": "2026-08-10T10:06:06+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/administrator",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .ssh/id_rsa",
+      "timestamp": "2026-08-10T10:05:54+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/.ssh/id_rsa",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /admin",
+      "timestamp": "2026-08-10T10:05:42+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/admin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .aws/credentials",
+      "timestamp": "2026-08-10T10:05:36+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/.aws/credentials",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: config.php",
+      "timestamp": "2026-08-10T10:05:30+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/config.php",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /phpmyadmin",
+      "timestamp": "2026-08-10T10:05:24+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/phpmyadmin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: /wp-admin",
+      "timestamp": "2026-08-10T10:05:18+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/wp-admin",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: wp-login.php",
+      "timestamp": "2026-08-10T10:05:12+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/wp-login.php",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .git/config",
+      "timestamp": "2026-08-10T10:05:06+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/.git/config",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "suspicious_request",
+      "severity": "HIGH",
+      "description": "Request matched suspicious pattern: .env",
+      "timestamp": "2026-08-10T10:05:00+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "path": "/.env",
+        "method": "GET",
+        "status": 404
+      }
+    },
+    {
+      "alert_type": "brute_force",
+      "severity": "HIGH",
+      "description": "Possible brute-force login attempt",
+      "timestamp": "2026-08-10T09:02:32+00:00",
+      "source_ip": "203.0.113.7",
+      "username": null,
+      "details": {
+        "failed_attempts": 5,
+        "window_minutes": 5,
+        "usernames_tried": [
+          "admin",
+          "oracle",
+          "root",
+          "test",
+          "ubuntu"
+        ]
+      }
+    },
+    {
+      "alert_type": "web_scanning",
+      "severity": "MEDIUM",
+      "description": "Burst of 404 responses suggests directory/content scanning",
+      "timestamp": "2026-08-10T14:00:54+00:00",
+      "source_ip": "192.0.2.66",
+      "username": null,
+      "details": {
+        "requests_404": 10,
+        "window_minutes": 2
+      }
+    },
+    {
+      "alert_type": "web_scanning",
+      "severity": "MEDIUM",
+      "description": "Burst of 404 responses suggests directory/content scanning",
+      "timestamp": "2026-08-10T10:05:54+00:00",
+      "source_ip": "198.51.100.77",
+      "username": null,
+      "details": {
+        "requests_404": 10,
+        "window_minutes": 2
+      }
+    },
+    {
+      "alert_type": "privilege_escalation_attempt",
+      "severity": "MEDIUM",
+      "description": "Repeated failed sudo/privilege escalation attempts",
+      "timestamp": "2026-08-10T09:07:50+00:00",
+      "source_ip": null,
+      "username": "webapp",
+      "details": {
+        "failed_attempts": 3,
+        "window_minutes": 5
+      }
+    }
+  ]
+}
