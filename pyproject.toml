@@ -30,3 +30,10 @@ packages = ["src/soc_analyzer"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "--strict-markers"
+
+[tool.coverage.run]
+source = ["soc_analyzer"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

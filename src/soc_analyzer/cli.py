@@ -10,6 +10,7 @@ from .database import init_db, query_alerts, store_alerts, store_events
 from .detectors import run_all_detectors
 from .parsers import parse_log_file
 from .reporting import alerts_to_json, print_alerts, print_stored_alerts
+from .sanitize import escape_for_terminal
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -67,9 +68,22 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _error(message: object) -> None:
+    """Print an error to stderr. Messages may quote paths or log content: escape them."""
+    print(f"Error: {escape_for_terminal(message)}", file=sys.stderr)
+
+
+def _harden_console() -> None:
+    """Never crash on text the console encoding cannot represent (e.g. cp1252)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(errors="backslashreplace")
+
+
 def _run_query_mode(args) -> int:
     if not args.db:
-        print("Error: --show-alerts requires --db <path>", file=sys.stderr)
+        _error("--show-alerts requires --db <path>")
         return 1
     conn = init_db(args.db)
     rows = query_alerts(conn, severity=args.severity)
@@ -83,14 +97,14 @@ def _run_query_mode(args) -> int:
 
 
 def main(argv=None) -> int:
+    _harden_console()
     args = build_parser().parse_args(argv)
 
     if args.show_alerts:
         return _run_query_mode(args)
 
     if not args.file:
-        print("Error: --file is required (or use --show-alerts to query an existing --db)",
-              file=sys.stderr)
+        _error("--file is required (or use --show-alerts to query an existing --db)")
         return 1
 
     events = []
@@ -98,7 +112,7 @@ def main(argv=None) -> int:
         try:
             events += parse_log_file(path, log_type=args.type, year=args.year)
         except (FileNotFoundError, ValueError) as exc:
-            print(f"Error: {exc}", file=sys.stderr)
+            _error(exc)
             return 1
 
     if not events:
@@ -109,7 +123,7 @@ def main(argv=None) -> int:
     try:
         allowlist = build_allowlist(args.allow_ip, args.allow_user, args.allowlist_file)
     except (FileNotFoundError, ValueError) as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        _error(exc)
         return 1
 
     alerts = run_all_detectors(
@@ -130,7 +144,7 @@ def main(argv=None) -> int:
     if args.json:
         print(alerts_to_json(alerts))
     else:
-        sources = ", ".join(args.file)
+        sources = escape_for_terminal(", ".join(args.file))
         print(f"[*] Parsed {len(events)} event(s) from {sources}\n")
         print_alerts(alerts, no_color=args.no_color)
         if suppressed:
@@ -141,7 +155,8 @@ def main(argv=None) -> int:
         store_events(conn, events)
         store_alerts(conn, alerts)
         conn.close()
-        print(f"\n[*] Saved {len(events)} event(s) and {len(alerts)} alert(s) to {args.db}")
+        print(f"\n[*] Saved {len(events)} event(s) and {len(alerts)} alert(s) to "
+              f"{escape_for_terminal(args.db)}")
 
     return 0
 

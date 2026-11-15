@@ -266,8 +266,21 @@ def run_tool(args: Sequence[str]) -> list[str]:
     return [] if result.returncode == 0 else [f"exit code {result.returncode}"]
 
 
+COVERAGE_MIN = 90
+
+
 def check_tests() -> list[str]:
-    return run_tool([sys.executable, "-m", "pytest", "-q"])
+    return run_tool(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "--cov",
+            "--cov-report=term-missing",
+            f"--cov-fail-under={COVERAGE_MIN}",
+        ]
+    )
 
 
 # --------------------------------------------------------------------------- CLI smoke test
@@ -307,7 +320,7 @@ def check_cli_smoke() -> list[str]:
 # --------------------------------------------------------------------------- runner
 
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
-    ("pytest", check_tests),
+    (f"pytest + coverage >= {COVERAGE_MIN}%", check_tests),
     ("AST ban (execution primitives in src/)", check_ast_ban),
     ("secret and email scan", check_secret_scan),
     ("RFC 5737 addresses only in tests, samples, docs", check_documentation_ips),
