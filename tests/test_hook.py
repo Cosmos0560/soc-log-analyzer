@@ -132,7 +132,7 @@ BLOCKED_BASH = [
     "docker exec -it DVWA sh",
     # host port 8080
     "docker run -p 8080:80 nginx",
-    "docker run -p 127.0.0.1:8080:80 nginx",
+    "docker run -p 192.0.2.1:8080:80 nginx",
     "python -m http.server 8080",
     "uvicorn app:app --port 8080",
     "uvicorn app:app --port=8080",

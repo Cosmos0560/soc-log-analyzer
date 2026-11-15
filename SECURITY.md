@@ -27,10 +27,13 @@ start reporting results under the Security tab once it runs.
 
 Never commit real system logs, tokens, API keys, or credentials to this
 repository. The sample logs in `examples/` are entirely synthetic —
-generated for this repo with `random.seed(42)` for reproducibility — and
-use IANA-reserved documentation IP ranges (`192.0.2.0/24`, `198.51.100.0/24`,
-`203.0.113.0/24`, per RFC 5737) specifically so nothing resembling a real
-address ever appears in this codebase.
+hand-written attack scenarios with fixed timestamps, so the documented
+output is reproducible — and use only IANA-reserved documentation IP ranges
+(`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`, per RFC 5737)
+specifically so nothing resembling a real address ever appears in this
+codebase. The tests follow the same rule, and `scripts/gate.py` fails any
+commit that adds another IPv4 literal under `tests/`, `examples/`, `docs/` or
+`README.md`.
 
 If you fork this project to run against real logs locally, keep them out of
 version control — the `.gitignore` already excludes `*.log` files outside

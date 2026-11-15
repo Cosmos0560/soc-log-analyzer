@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import ipaddress
 import os
 import re
 import subprocess
@@ -169,6 +170,48 @@ def check_secret_scan() -> list[str]:
     return problems
 
 
+# --------------------------------------------------------------------------- RFC 5737 data rule
+
+# Test data, samples and docs may only use documentation addresses (RFC 5737).
+DOC_NETWORKS = tuple(
+    ipaddress.IPv4Network(net) for net in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")
+)
+DATA_PREFIXES = ("tests/", "examples/", "docs/")
+DATA_FILES = frozenset({"README.md"})
+IPV4_RE = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?!\d|\.\d)")
+
+
+def non_documentation_ips(text: str) -> list[tuple[int, str]]:
+    """Return (line number, address) for each valid IPv4 literal outside RFC 5737."""
+    found: list[tuple[int, str]] = []
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        for match in IPV4_RE.finditer(line):
+            try:
+                addr = ipaddress.IPv4Address(match.group(1))
+            except ValueError:
+                continue  # not an address (an octet over 255): a version string or similar
+            if not any(addr in net for net in DOC_NETWORKS):
+                found.append((lineno, str(addr)))
+    return found
+
+
+def is_data_path(rel: str) -> bool:
+    return rel in DATA_FILES or rel.startswith(DATA_PREFIXES)
+
+
+def check_documentation_ips() -> list[str]:
+    problems: list[str] = []
+    for rel in tracked_paths():
+        if not is_data_path(rel):
+            continue
+        text = read_tracked_text(rel)
+        if text is None:
+            continue
+        for lineno, addr in non_documentation_ips(text):
+            problems.append(f"{rel}:{lineno}: {addr} is not an RFC 5737 documentation address")
+    return problems
+
+
 # --------------------------------------------------------------------------- graph and hygiene
 
 # Graphify output and its local ignore file are tool state, never committed.
@@ -267,6 +310,7 @@ CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("pytest", check_tests),
     ("AST ban (execution primitives in src/)", check_ast_ban),
     ("secret and email scan", check_secret_scan),
+    ("RFC 5737 addresses only in tests, samples, docs", check_documentation_ips),
     ("graphify files not staged, ignored", check_graph),
     ("commit hygiene", check_hygiene),
     ("CLI smoke test", check_cli_smoke),

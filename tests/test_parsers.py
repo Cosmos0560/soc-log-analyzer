@@ -47,12 +47,12 @@ def test_parse_apache_access_log():
 
 
 def test_detect_log_type_auth():
-    lines = ["Aug 10 09:15:32 host sshd[123]: Failed password for root from 1.2.3.4 port 22 ssh2"]
+    lines = ["Aug 10 09:15:32 host sshd[123]: Failed password for root from 203.0.113.4 port 22 ssh2"]
     assert detect_log_type(lines) == "auth"
 
 
 def test_detect_log_type_apache():
-    lines = ['1.2.3.4 - - [10/Aug/2026:09:15:32 +0000] "GET / HTTP/1.1" 200 100 "-" "curl"']
+    lines = ['203.0.113.4 - - [10/Aug/2026:09:15:32 +0000] "GET / HTTP/1.1" 200 100 "-" "curl"']
     assert detect_log_type(lines) == "apache"
 
 

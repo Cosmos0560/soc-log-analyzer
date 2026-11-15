@@ -223,9 +223,10 @@ bugs this suite was built to catch.
   here would need human triage in a real environment before action is
   taken — that's true of any detection engine, including commercial
   SIEMs.
-- The included sample logs are entirely synthetic (generated for this
-  repo, seeded for reproducibility) and use RFC 5737 documentation IP
-  ranges. No real IP addresses, usernames, or system data are included.
+- The included sample logs are entirely synthetic (hand-written attack
+  scenarios with fixed timestamps) and use only RFC 5737 documentation IP
+  ranges, as do the tests. No real IP addresses, usernames, or system data
+  are included.
 - Repository-level controls (secret scanning, push protection, CodeQL,
   Dependabot) are documented in [`SECURITY.md`](SECURITY.md), including
   which of them are repo-setting toggles rather than files.

@@ -1,8 +1,8 @@
-Aug 10 14:10:00 webserver01 sshd[20000]: Accepted publickey for deploy from 10.0.0.5 port 52000 ssh2
+Aug 10 14:10:00 webserver01 sshd[20000]: Accepted publickey for deploy from 192.0.2.5 port 52000 ssh2
 Aug 10 14:20:00 webserver01 sshd[20001]: Failed password for invalid user admin from 192.0.2.66 port 44000 ssh2
 Aug 10 14:20:06 webserver01 sshd[20002]: Failed password for invalid user oracle from 192.0.2.66 port 44001 ssh2
 Aug 10 14:20:12 webserver01 sshd[20003]: Failed password for invalid user root from 192.0.2.66 port 44002 ssh2
 Aug 10 14:20:18 webserver01 sshd[20004]: Failed password for invalid user test from 192.0.2.66 port 44003 ssh2
 Aug 10 14:20:24 webserver01 sshd[20005]: Failed password for invalid user ubuntu from 192.0.2.66 port 44004 ssh2
 Aug 10 14:20:30 webserver01 sshd[20006]: Accepted password for root from 192.0.2.66 port 44005 ssh2
-Aug 10 14:35:00 webserver01 sshd[20010]: Accepted publickey for deploy from 10.0.0.5 port 52100 ssh2
+Aug 10 14:35:00 webserver01 sshd[20010]: Accepted publickey for deploy from 192.0.2.5 port 52100 ssh2

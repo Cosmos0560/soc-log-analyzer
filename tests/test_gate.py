@@ -118,6 +118,39 @@ def test_tracked_files_are_clean(gate: ModuleType) -> None:
     assert gate.check_secret_scan() == []
 
 
+# ---------------------------------------------------------------- RFC 5737 data rule
+
+# Non-documentation addresses are built at runtime so this file passes its own check.
+PUBLIC_IP = ".".join(["8"] * 4)
+PRIVATE_IP = ".".join(["10", "0", "0", "5"])
+LOOPBACK_IP = ".".join(["127", "0", "0", "1"])
+
+
+def test_documentation_ips_pass(gate: ModuleType) -> None:
+    text = "203.0.113.7 and 198.51.100.77, then 192.0.2.66.\nIPv6 2001:db8::1"
+    assert gate.non_documentation_ips(text) == []
+
+
+@pytest.mark.parametrize("addr", [PUBLIC_IP, PRIVATE_IP, LOOPBACK_IP])
+def test_non_documentation_ips_are_reported(gate: ModuleType, addr: str) -> None:
+    assert gate.non_documentation_ips(f"line one\nfrom {addr} port 22") == [(2, addr)]
+
+
+def test_version_like_strings_are_not_addresses(gate: ModuleType) -> None:
+    assert gate.non_documentation_ips("version 1.2.3, build 999.1.1.1, 1.2.3.4.5") == []
+
+
+def test_data_paths(gate: ModuleType) -> None:
+    for rel in ("tests/test_x.py", "examples/a.log", "docs/X.md", "README.md"):
+        assert gate.is_data_path(rel)
+    for rel in ("src/soc_analyzer/cli.py", "CHANGELOG.md", "scripts/gate.py"):
+        assert not gate.is_data_path(rel)
+
+
+def test_repo_uses_only_documentation_ips(gate: ModuleType) -> None:
+    assert gate.check_documentation_ips() == []
+
+
 # ---------------------------------------------------------------- graph and hygiene
 
 
