@@ -1,0 +1,3 @@
+# The tool itself has zero runtime dependencies (standard library only).
+# This file only lists what's needed to run the test suite / CI.
+pytest>=7.4

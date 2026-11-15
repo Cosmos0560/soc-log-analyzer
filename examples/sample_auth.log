@@ -1,0 +1,40 @@
+Aug 10 09:00:00 webserver01 sshd[10001]: Accepted publickey for deploy from 10.0.0.5 port 52344 ssh2
+Aug 10 09:02:00 webserver01 sshd[10010]: Failed password for invalid user root from 203.0.113.7 port 40000 ssh2
+Aug 10 09:02:08 webserver01 sshd[10011]: Failed password for invalid user admin from 203.0.113.7 port 40001 ssh2
+Aug 10 09:02:16 webserver01 sshd[10012]: Failed password for invalid user test from 203.0.113.7 port 40002 ssh2
+Aug 10 09:02:24 webserver01 sshd[10013]: Failed password for invalid user oracle from 203.0.113.7 port 40003 ssh2
+Aug 10 09:02:32 webserver01 sshd[10014]: Failed password for invalid user ubuntu from 203.0.113.7 port 40004 ssh2
+Aug 10 09:02:40 webserver01 sshd[10015]: Failed password for invalid user postgres from 203.0.113.7 port 40005 ssh2
+Aug 10 09:02:48 webserver01 sshd[10016]: Failed password for invalid user user from 203.0.113.7 port 40006 ssh2
+Aug 10 09:02:56 webserver01 sshd[10017]: Failed password for invalid user ftpuser from 203.0.113.7 port 40007 ssh2
+Aug 10 09:03:04 webserver01 sshd[10018]: Failed password for invalid user guest from 203.0.113.7 port 40008 ssh2
+Aug 10 09:03:12 webserver01 sshd[10019]: Failed password for invalid user pi from 203.0.113.7 port 40009 ssh2
+Aug 10 09:03:20 webserver01 sshd[10020]: Failed password for invalid user administrator from 203.0.113.7 port 40010 ssh2
+Aug 10 09:03:28 webserver01 sshd[10021]: Failed password for invalid user deploy from 203.0.113.7 port 40011 ssh2
+Aug 10 09:03:36 webserver01 sshd[10022]: Failed password for invalid user git from 203.0.113.7 port 40012 ssh2
+Aug 10 09:03:44 webserver01 sshd[10023]: Failed password for invalid user www-data from 203.0.113.7 port 40013 ssh2
+Aug 10 09:03:52 webserver01 sshd[10024]: Failed password for invalid user ec2-user from 203.0.113.7 port 40014 ssh2
+Aug 10 09:04:00 webserver01 sshd[10025]: Failed password for invalid user support from 203.0.113.7 port 40015 ssh2
+Aug 10 09:04:08 webserver01 sshd[10026]: Failed password for invalid user backup from 203.0.113.7 port 40016 ssh2
+Aug 10 09:04:16 webserver01 sshd[10027]: Failed password for invalid user info from 203.0.113.7 port 40017 ssh2
+Aug 10 09:04:24 webserver01 sshd[10028]: Failed password for invalid user sysadmin from 203.0.113.7 port 40018 ssh2
+Aug 10 09:04:32 webserver01 sshd[10029]: Failed password for invalid user demo from 203.0.113.7 port 40019 ssh2
+Aug 10 09:04:40 webserver01 sshd[10030]: Failed password for invalid user oracle2 from 203.0.113.7 port 40020 ssh2
+Aug 10 09:04:48 webserver01 sshd[10031]: Failed password for invalid user tomcat from 203.0.113.7 port 40021 ssh2
+Aug 10 09:04:56 webserver01 sshd[10032]: Failed password for invalid user mysql from 203.0.113.7 port 40022 ssh2
+Aug 10 09:05:04 webserver01 sshd[10033]: Failed password for invalid user jenkins from 203.0.113.7 port 40023 ssh2
+Aug 10 09:05:12 webserver01 sshd[10034]: Failed password for invalid user vagrant from 203.0.113.7 port 40024 ssh2
+Aug 10 09:05:20 webserver01 sshd[10035]: Failed password for invalid user minecraft from 203.0.113.7 port 40025 ssh2
+Aug 10 09:05:28 webserver01 sshd[10036]: Failed password for invalid user steam from 203.0.113.7 port 40026 ssh2
+Aug 10 09:05:36 webserver01 sshd[10037]: Failed password for invalid user plex from 203.0.113.7 port 40027 ssh2
+Aug 10 09:05:44 webserver01 sshd[10038]: Failed password for invalid user nagios from 203.0.113.7 port 40028 ssh2
+Aug 10 09:05:52 webserver01 sshd[10039]: Failed password for invalid user zabbix from 203.0.113.7 port 40029 ssh2
+Aug 10 09:06:10 webserver01 sshd[10099]: Accepted password for root from 203.0.113.7 port 40999 ssh2
+Aug 10 09:07:10 webserver01 sudo:   webapp : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/webapp ; USER=root ; COMMAND=/bin/bash
+Aug 10 09:07:30 webserver01 sudo:   webapp : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/webapp ; USER=root ; COMMAND=/bin/bash
+Aug 10 09:07:50 webserver01 sudo:   webapp : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/webapp ; USER=root ; COMMAND=/bin/bash
+Aug 10 09:08:10 webserver01 sudo:   webapp : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/webapp ; USER=root ; COMMAND=/bin/bash
+Aug 10 09:20:00 webserver01 sshd[10200]: Failed password for invalid user admin from 198.51.100.23 port 41111 ssh2
+Aug 10 09:23:00 webserver01 sshd[10200]: Failed password for invalid user root from 198.51.100.23 port 41111 ssh2
+Aug 10 09:30:00 webserver01 sshd[10300]: Accepted publickey for deploy from 10.0.0.5 port 53211 ssh2
+Aug 10 09:35:00 webserver01 sudo:   deploy : TTY=pts/2 ; PWD=/var/www ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx

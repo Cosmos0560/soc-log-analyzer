@@ -1,0 +1,15 @@
+# Example allow-list.
+#
+# One entry per line: "ip:<value>" or "user:<value>". Blank lines and lines
+# starting with "#" are ignored. An alert is suppressed if its source IP OR
+# its username matches an entry here.
+#
+# The IP below is the scanner IP used in examples/sample_apache.log — try:
+#   python analyzer.py --file examples/sample_apache.log --allowlist-file examples/sample_allowlist.txt
+# and compare the alert count to running without --allowlist-file.
+
+# Internal vulnerability-scanning box — expected to probe for these paths.
+ip:198.51.100.77
+
+# Service account whose failed sudo attempts during deploys are expected.
+user:webapp
