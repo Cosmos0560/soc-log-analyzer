@@ -7,6 +7,26 @@ takes any active response action (no IP blocking, no account changes). See
 [`docs/DETECTION_RULES.md`](docs/DETECTION_RULES.md) for what the detection
 engine does and does not attempt to catch.
 
+## Untrusted log content
+
+Every field the parsers extract from a log line (usernames, source IPs, request
+paths, sudo commands) can be chosen by whoever writes to that log. The tool
+handles that content like this:
+
+- **Console**: every control, format and separator character (ANSI/OSC escape
+  sequences, C1 controls, bidi overrides and isolates, zero-width characters,
+  line separators) is replaced with a visible escape such as `\x1b` before it
+  is printed. This also applies to alerts read back from a database.
+- **JSON**: the output is ASCII-only, so the raw document cannot inject anything
+  into a terminal. After parsing, the values are the original raw strings.
+  [`docs/OUTPUT_SCHEMA.md`](docs/OUTPUT_SCHEMA.md) marks which fields are
+  log-derived; consumers must treat them as untrusted. In particular,
+  `source_ip` is not guaranteed to be a valid IP address.
+- **Input files**: they are read as UTF-8 with undecodable bytes replaced,
+  streamed line by line after a size check (`--max-file-mb`, default 100 MB;
+  1 MB for allow-lists). A malformed line is skipped and counted, never fatal.
+- **SQLite**: values are stored raw, through parameterized queries only.
+
 ## Repository security settings
 
 The following are enabled via **GitHub repo Settings → Security**, not by

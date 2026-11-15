@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package with dev dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Gate
+        run: python scripts/gate.py
+      - name: CLI smoke test (installed entry point)
+        shell: bash
+        run: |
+          soc-log-analyzer --version
+          soc-log-analyzer --file examples/sample_auth.log --no-color
+          soc-log-analyzer --file examples/sample_apache.log --no-color
+          soc-log-analyzer --file examples/sample_recon_apache.log \
+            --file examples/sample_recon_auth.log --year 2026 --json > out.json
+          python -c "import json; d = json.load(open('out.json')); assert d['schema_version'] == '1.0' and d['summary']['alerts'] == 14, d['summary']"

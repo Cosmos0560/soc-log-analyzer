@@ -8,6 +8,7 @@ import sys
 from collections.abc import Sequence
 from datetime import tzinfo
 
+from . import __version__
 from .allowlist import build_allowlist
 from .database import init_db, query_alerts, store_alerts, store_events
 from .detectors import run_all_detectors
@@ -94,6 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
         "console output; status messages go to stderr",
     )
     p.add_argument("--no-color", action="store_true", help="Disable colored console output")
+    p.add_argument("--version", action="version", version=f"soc-log-analyzer {__version__}")
 
     grp = p.add_argument_group("detection thresholds")
     grp.add_argument(

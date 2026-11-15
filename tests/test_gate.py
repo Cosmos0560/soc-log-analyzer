@@ -232,3 +232,22 @@ def test_gate_accepts_no_flags(gate: ModuleType) -> None:
     with pytest.raises(SystemExit) as exc:
         gate.main(["--skip-tests"])
     assert exc.value.code == 2
+
+
+# ---------------------------------------------------------------- README test count
+
+
+def test_readme_count_problems(gate: ModuleType) -> None:
+    good = "A 12-test suite.\nThe 12 tests cover parsers."
+    assert gate.readme_count_problems(good, 12) == []
+    assert gate.readme_count_problems(good, 13) == [
+        "README.md says 12 tests, pytest collects 13",
+        "README.md says 12 tests, pytest collects 13",
+    ]
+    assert gate.readme_count_problems("no numbers here, only tests", 5) == [
+        "README.md states no test count"
+    ]
+
+
+def test_readme_count_matches_the_real_suite(gate: ModuleType) -> None:
+    assert gate.check_readme_test_count() == []

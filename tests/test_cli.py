@@ -191,3 +191,10 @@ def test_show_alerts_round_trip(tmp_path: Path, capsys: pytest.CaptureFixture[st
     assert code == 0
     assert "Possible Compromised Credential" in out
     assert "Summary: 1 alert(s)" in out
+
+
+def test_version_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--version"])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.strip() == "soc-log-analyzer 1.0.0"

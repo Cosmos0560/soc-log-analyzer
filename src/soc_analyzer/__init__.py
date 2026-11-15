@@ -6,4 +6,4 @@ detection engine over them, and reports the results as human-readable
 alerts, JSON, or a SQLite database for further querying.
 """
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"

@@ -298,6 +298,17 @@ def check_tests() -> list[str]:
 SMOKE_RUNS: list[tuple[list[str], str]] = [
     (["--file", "examples/sample_auth.log", "--no-color"], "Summary: 3 alert(s)"),
     (["--file", "examples/sample_apache.log", "--no-color"], "Summary: 12 alert(s)"),
+    (
+        [
+            "--file",
+            "examples/sample_recon_apache.log",
+            "--file",
+            "examples/sample_recon_auth.log",
+            "--json",
+        ],
+        '"schema_version": "1.0"',
+    ),
+    (["--version"], "soc-log-analyzer "),
 ]
 
 
@@ -326,6 +337,41 @@ def check_cli_smoke() -> list[str]:
     return problems
 
 
+# --------------------------------------------------------------------------- README test count
+
+README_COUNT_RE = re.compile(r"\b(\d+)(?:-test\b| tests\b)")
+COLLECTED_RE = re.compile(r"\b(\d+) tests? collected\b")
+
+
+def readme_count_problems(readme: str, collected: int) -> list[str]:
+    """Every 'N tests' / 'N-test' in the README must equal the collected test count."""
+    claims = [int(n) for n in README_COUNT_RE.findall(readme)]
+    if not claims:
+        return ["README.md states no test count"]
+    return [
+        f"README.md says {n} tests, pytest collects {collected}" for n in claims if n != collected
+    ]
+
+
+def collected_test_count() -> int:
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+    out = result.stdout.decode("utf-8", "replace")
+    match = COLLECTED_RE.search(out)
+    if result.returncode != 0 or match is None:
+        raise RuntimeError(f"pytest --collect-only failed (exit {result.returncode})")
+    return int(match.group(1))
+
+
+def check_readme_test_count() -> list[str]:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    return readme_count_problems(readme, collected_test_count())
+
+
 # --------------------------------------------------------------------------- runner
 
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
@@ -338,6 +384,7 @@ CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
     ("graphify files not staged, ignored", check_graph),
     ("commit hygiene", check_hygiene),
     ("CLI smoke test", check_cli_smoke),
+    ("README test count matches pytest", check_readme_test_count),
 ]
 
 
