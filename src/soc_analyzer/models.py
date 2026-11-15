@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Severity(str, Enum):
@@ -62,3 +62,18 @@ class Alert:
             "username": self.username,
             "details": self.details,
         }
+
+
+@dataclass
+class ParseResult:
+    """What a parser produced from one log source.
+
+    ``skipped_lines`` counts lines that matched a known log format but could not be
+    turned into an event (for example an impossible date such as Feb 29 in a non-leap
+    year). Lines that match no known format at all are ignored and not counted: real
+    auth logs contain plenty of unrelated entries (cron, PAM sessions) by design.
+    """
+
+    log_type: str
+    events: List[LogEvent] = field(default_factory=list)
+    skipped_lines: int = 0

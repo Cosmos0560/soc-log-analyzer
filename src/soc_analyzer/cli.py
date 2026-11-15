@@ -3,14 +3,34 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 import sys
+from datetime import tzinfo
 
 from .allowlist import build_allowlist
 from .database import init_db, query_alerts, store_alerts, store_events
 from .detectors import run_all_detectors
-from .parsers import parse_log_file
+from .parsers import DEFAULT_MAX_FILE_MB, FileTooLargeError, parse_log_file
 from .reporting import alerts_to_json, print_alerts, print_stored_alerts
 from .sanitize import escape_for_terminal
+from .timezones import parse_timezone
+
+
+def _tz_arg(value: str) -> tzinfo:
+    try:
+        return parse_timezone(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        number = 0
+    if number < 1:
+        raise argparse.ArgumentTypeError(f"expected a whole number of 1 or more, got {value!r}")
+    return number
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,7 +47,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--type", choices=["auto", "auth", "apache"], default="auto",
                     help="Log format applied to every --file (default: auto-detect each one)")
     p.add_argument("--year", type=int, default=None,
-                    help="Year to assume for auth.log entries (which omit it). Defaults to current year.")
+                    help="Year to assume for auth.log entries (which omit it). "
+                         "Defaults to the current year in --tz.")
+    p.add_argument("--tz", type=_tz_arg, default=parse_timezone("UTC"), metavar="ZONE",
+                    help="Time zone of auth.log timestamps (which carry none), and the zone all "
+                         "output timestamps are converted to: UTC, an offset such as +05:30, or "
+                         "an IANA name such as Europe/Berlin (default: UTC)")
+    p.add_argument("--max-file-mb", type=_positive_int, default=DEFAULT_MAX_FILE_MB, metavar="MB",
+                    help=f"Refuse log files larger than this many megabytes "
+                         f"(default: {DEFAULT_MAX_FILE_MB})")
     p.add_argument("--db", default=None, help="SQLite file to persist events + alerts into")
     p.add_argument("--json", action="store_true", help="Print alerts as JSON instead of console output")
     p.add_argument("--no-color", action="store_true", help="Disable colored console output")
@@ -85,9 +113,15 @@ def _run_query_mode(args) -> int:
     if not args.db:
         _error("--show-alerts requires --db <path>")
         return 1
-    conn = init_db(args.db)
-    rows = query_alerts(conn, severity=args.severity)
-    conn.close()
+    try:
+        conn = init_db(args.db)
+        try:
+            rows = query_alerts(conn, severity=args.severity)
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        _error(f"cannot read database {args.db!r}: {exc}")
+        return 1
     if args.json:
         import json
         print(json.dumps([dict(r) for r in rows], indent=2))
@@ -107,13 +141,36 @@ def main(argv=None) -> int:
         _error("--file is required (or use --show-alerts to query an existing --db)")
         return 1
 
-    events = []
+    results = []
     for path in args.file:
         try:
-            events += parse_log_file(path, log_type=args.type, year=args.year)
-        except (FileNotFoundError, ValueError) as exc:
+            results.append(
+                parse_log_file(
+                    path,
+                    log_type=args.type,
+                    year=args.year,
+                    tz=args.tz,
+                    max_bytes=args.max_file_mb * 1024 * 1024,
+                )
+            )
+        except FileTooLargeError as exc:
+            _error(f"{exc} (raise it with --max-file-mb)")
+            return 1
+        except OSError as exc:
+            _error(f"cannot read {path!r}: {exc.strerror or exc}")
+            return 1
+        except ValueError as exc:
             _error(exc)
             return 1
+
+    events = [event for result in results for event in result.events]
+    skipped = sum(result.skipped_lines for result in results)
+    # Status lines go to stderr in --json mode so stdout stays machine-readable.
+    status_stream = sys.stderr if args.json else sys.stdout
+
+    if skipped:
+        print(f"[!] Skipped {skipped} line(s) that matched a known log format but could "
+              "not be parsed (e.g. an impossible date)", file=status_stream)
 
     if not events:
         print("[!] No recognizable log lines were parsed. "
@@ -122,7 +179,10 @@ def main(argv=None) -> int:
 
     try:
         allowlist = build_allowlist(args.allow_ip, args.allow_user, args.allowlist_file)
-    except (FileNotFoundError, ValueError) as exc:
+    except OSError as exc:
+        _error(f"cannot read {args.allowlist_file!r}: {exc.strerror or exc}")
+        return 1
+    except ValueError as exc:
         _error(exc)
         return 1
 
@@ -151,12 +211,18 @@ def main(argv=None) -> int:
             print(f"\n[*] Suppressed {len(suppressed)} alert(s) via allow-list")
 
     if args.db:
-        conn = init_db(args.db)
-        store_events(conn, events)
-        store_alerts(conn, alerts)
-        conn.close()
+        try:
+            conn = init_db(args.db)
+            try:
+                store_events(conn, events)
+                store_alerts(conn, alerts)
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            _error(f"cannot write database {args.db!r}: {exc}")
+            return 1
         print(f"\n[*] Saved {len(events)} event(s) and {len(alerts)} alert(s) to "
-              f"{escape_for_terminal(args.db)}")
+              f"{escape_for_terminal(args.db)}", file=status_stream)
 
     return 0
 

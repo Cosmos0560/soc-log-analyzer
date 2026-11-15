@@ -23,6 +23,10 @@ from dataclasses import dataclass, field
 from typing import List, Set, Tuple
 
 from .models import Alert
+from .parsers import check_input_file, iter_text_lines
+
+# An allow-list is a short hand-written file; anything bigger is a mistake.
+MAX_ALLOWLIST_BYTES = 1024 * 1024
 
 
 @dataclass
@@ -60,7 +64,8 @@ def load_allowlist_file(path: str) -> AllowList:
     """Parse a simple allow-list file.
 
     Format: one entry per line, ``ip:<value>`` or ``user:<value>``.
-    Blank lines and lines starting with ``#`` are ignored. Example::
+    Blank lines and lines starting with ``#`` are ignored. The file is read as
+    UTF-8 and may be at most 1 MB. Example::
 
         # our internal vuln scanner
         ip:198.51.100.50
@@ -68,9 +73,10 @@ def load_allowlist_file(path: str) -> AllowList:
         # health-check account, retries by design
         user:healthcheck
     """
+    check_input_file(path, MAX_ALLOWLIST_BYTES)
     result = AllowList()
-    with open(path, "r") as f:
-        for lineno, raw in enumerate(f, start=1):
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for lineno, raw in enumerate(iter_text_lines(f), start=1):
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue

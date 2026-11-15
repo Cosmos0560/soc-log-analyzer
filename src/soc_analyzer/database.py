@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from .models import Alert, LogEvent
@@ -44,6 +45,14 @@ CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
 """
 
 
+def db_timestamp(value: datetime) -> str:
+    """ISO 8601 for storage. Aware timestamps are stored in UTC so that sorting the
+    TEXT column sorts by time, whatever --tz the run used."""
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc)
+    return value.isoformat()
+
+
 def init_db(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
@@ -57,7 +66,7 @@ def store_events(conn: sqlite3.Connection, events: List[LogEvent]) -> None:
            (timestamp, source, event_type, source_ip, username, status_code, path, method, raw_line, extra)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         [
-            (e.timestamp.isoformat(), e.source, e.event_type, e.source_ip,
+            (db_timestamp(e.timestamp), e.source, e.event_type, e.source_ip,
              e.username, e.status_code, e.path, e.method, e.raw_line,
              json.dumps(e.extra) if e.extra else None)
             for e in events
@@ -72,7 +81,7 @@ def store_alerts(conn: sqlite3.Connection, alerts: List[Alert]) -> None:
            (alert_type, severity, description, timestamp, source_ip, username, details)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
         [
-            (a.alert_type, a.severity.value, a.description, a.timestamp.isoformat(),
+            (a.alert_type, a.severity.value, a.description, db_timestamp(a.timestamp),
              a.source_ip, a.username, json.dumps(a.details))
             for a in alerts
         ],

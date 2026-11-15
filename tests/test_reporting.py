@@ -16,7 +16,7 @@ import pytest
 
 from soc_analyzer import cli
 from soc_analyzer.database import init_db
-from soc_analyzer.models import Alert, LogEvent, Severity
+from soc_analyzer.models import Alert, LogEvent, ParseResult, Severity
 from soc_analyzer.reporting import (
     alerts_to_json,
     format_alert,
@@ -228,7 +228,7 @@ def test_cli_escapes_file_paths_in_output(
     event = LogEvent(
         timestamp=TS, source="auth", event_type="failed_login", source_ip="203.0.113.9"
     )
-    monkeypatch.setattr(cli, "parse_log_file", lambda *_a, **_k: [event])
+    monkeypatch.setattr(cli, "parse_log_file", lambda *_a, **_k: ParseResult("auth", [event]))
     db = str(tmp_path / "out.db")
     code, out, _ = _run(["--file", "x\x1b]0;t\x07" + RLO + ".log", "--db", db], capsys)
     assert code == 0
